@@ -15,14 +15,14 @@ import (
 )
 
 const (
-	cmapiurl           = "http://172.16.102.95:8090/api/customerManagement/v1/customers"
-	cmapitoken         = "Basic Y21hcGlfYWdlbnQ6cHZeOSZUL3BVakhhRStuXQ=="
-	oauthurl           = "http://172.16.102.95:9099/users"
-	oauthtoken         = "Bearer MTCXZJA4OTCTYZZJYY0ZOGNKLTKXNZGTMZU5ZWVJNZQ0ODAX"
-	getustomerscount   = 100
-	csvcustomers       = "customers.csv"
-	csvcreatecustomers = "create_customers.csv"
-	gorutines          = 5
+	cmapiurl               = "http://172.16.102.95:8090/api/customerManagement/v1/customers"
+	cmapitoken             = "Basic Y21hcGlfYWdlbnQ6cHZeOSZUL3BVakhhRStuXQ=="
+	oauthurl               = "http://172.16.102.95:9099/users"
+	oauthtoken             = "Bearer MTCXZJA4OTCTYZZJYY0ZOGNKLTKXNZGTMZU5ZWVJNZQ0ODAX"
+	getustomerscount       = 10
+	filecsvcustomers       = "customers.csv"
+	filecsvcreatecustomers = "create_customers.csv"
+	gorutines              = 5
 )
 
 type CSVCreateCustomer struct {
@@ -141,7 +141,7 @@ func createCustomer(cfg Config, customer Customer) (*http.Response, error) {
 }
 
 func writeCSVCustomers(customers []Customer) error {
-	csvfile, err := os.OpenFile(csvcustomers, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0660)
+	csvfile, err := os.OpenFile(filecsvcustomers, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0660)
 
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func writeCSVCustomers(customers []Customer) error {
 }
 
 func writeCSVCreateCustomers(customers []CSVCreateCustomer) error {
-	csvfile, err := os.OpenFile(csvcreatecustomers, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0660)
+	csvfile, err := os.OpenFile(filecsvcreatecustomers, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0660)
 
 	if err != nil {
 		return err
@@ -229,11 +229,11 @@ func main() {
 
 	cfg.Range.From += 1
 
+	wg := new(sync.WaitGroup)
+	wg.Add(gorutines)
+
 	for count := 0; count <= maxCustomers; {
 		var csvCustomersList []CSVCreateCustomer
-
-		wg := new(sync.WaitGroup)
-		wg.Add(gorutines)
 
 		for i := 0; i < len(customers); i++ {
 			count++
