@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	cmapiurl               = "http://172.16.102.95:8090/api/customerManagement/v1/customers"
-	cmapitoken             = "Basic Y21hcGlfYWdlbnQ6cHZeOSZUL3BVakhhRStuXQ=="
-	oauthurl               = "http://172.16.102.95:9099/users"
-	oauthtoken             = "Bearer ZTEYOGU0YTCTZJUWMS0ZNTJKLTG4NZMTNZDIM2FMOGQ4ZGRH"
+	cmapiurl               = ""
+	cmapitoken             = ""
+	oauthurl               = ""
+	oauthtoken             = ""
 	getustomerscount       = 10
 	filecsvcustomers       = "customers.csv"
 	filecsvcreatecustomers = "create_customers.csv"
