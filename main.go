@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const (
@@ -22,6 +22,7 @@ const (
 	getustomerscount   = 100
 	csvcustomers       = "customers.csv"
 	csvcreatecustomers = "create_customers.csv"
+	gorutines          = 5
 )
 
 type CSVCreateCustomer struct {
@@ -136,8 +137,6 @@ func createCustomer(cfg Config, customer Customer) (*http.Response, error) {
 		return nil, err
 	}
 
-	runtime.Gosched()
-
 	return resp, nil
 }
 
@@ -233,49 +232,55 @@ func main() {
 	for count := 0; count <= maxCustomers; {
 		var csvCustomersList []CSVCreateCustomer
 
+		wg := new(sync.WaitGroup)
+		wg.Add(gorutines)
+
 		for i := 0; i < len(customers); i++ {
 			count++
 
-			if customers[i].Login != "" && customers[i].Password != "" {
-				resp, err := createCustomer(cfg, customers[i])
-				if err != nil {
-					fmt.Println("create customer error: ", err.Error())
+			go func() {
+				if customers[i].Login != "" && customers[i].Password != "" {
+					resp, err := createCustomer(cfg, customers[i])
+					if err != nil {
+						fmt.Println("create customer error: ", err.Error())
+					} else {
+						var csvCustomer CSVCreateCustomer
 
-					continue
+						if resp.StatusCode == http.StatusCreated {
+							respBody, _ := ioutil.ReadAll(resp.Body)
+
+							var soauthResponse SOAUTHResponse
+
+							_ = json.Unmarshal(respBody, &soauthResponse)
+
+							customerID := strconv.Itoa(customers[i].ID)
+
+							csvCustomer.ID = customerID
+							csvCustomer.Login = customers[i].Login
+							csvCustomer.Password = customers[i].Password
+							csvCustomer.SoauthID = soauthResponse.ID
+							csvCustomer.SoauthParentID = soauthResponse.ParentID
+							csvCustomer.ResponseCode = "201"
+							csvCustomer.ResponseMessage = ""
+						} else {
+							custID := strconv.Itoa(customers[i].ID)
+
+							csvCustomer.ID = custID
+							csvCustomer.Login = customers[i].Login
+							csvCustomer.Password = customers[i].Password
+							csvCustomer.SoauthID = ""
+							csvCustomer.SoauthParentID = ""
+							csvCustomer.ResponseCode = strconv.Itoa(resp.StatusCode)
+							csvCustomer.ResponseMessage = resp.Status
+						}
+
+						csvCustomersList = append(csvCustomersList, csvCustomer)
+					}
 				}
+				wg.Done()
+			}()
 
-				var csvCustomer CSVCreateCustomer
-
-				if resp.StatusCode == http.StatusCreated {
-					respBody, _ := ioutil.ReadAll(resp.Body)
-
-					var soauthResponse SOAUTHResponse
-
-					_ = json.Unmarshal(respBody, &soauthResponse)
-
-					custID := strconv.Itoa(customers[i].ID)
-
-					csvCustomer.ID = custID
-					csvCustomer.Login = customers[i].Login
-					csvCustomer.Password = customers[i].Password
-					csvCustomer.SoauthID = soauthResponse.ID
-					csvCustomer.SoauthParentID = soauthResponse.ParentID
-					csvCustomer.ResponseCode = "201"
-					csvCustomer.ResponseMessage = ""
-				} else {
-					custID := strconv.Itoa(customers[i].ID)
-
-					csvCustomer.ID = custID
-					csvCustomer.Login = customers[i].Login
-					csvCustomer.Password = customers[i].Password
-					csvCustomer.SoauthID = ""
-					csvCustomer.SoauthParentID = ""
-					csvCustomer.ResponseCode = strconv.Itoa(resp.StatusCode)
-					csvCustomer.ResponseMessage = resp.Status
-				}
-
-				csvCustomersList = append(csvCustomersList, csvCustomer)
-			}
+			wg.Wait()
 		}
 
 		err := writeCSVCreateCustomers(csvCustomersList)
